@@ -9,13 +9,15 @@ import os
 # Prep data: this is where I combined all the separale .pkl files into one
 '''
 df = pd.DataFrame()
+f = open("ref.txt", "w")
 path = "C:/Viraj/University/Year 3/Comprehensives/TBPS/samples/"
 for i,file in enumerate(os.listdir(path)):
     if file.endswith(".pkl"):
         temp_df = pd.read_pickle(path+file)
         temp_df["class"] = i+1
         df = df.append(temp_df, ignore_index=True)
-
+        f.writelines(str(i+1) + ": " + file)
+f.close()
 print(df.head())
 print(df.info())
 df.to_pickle("all_samples_df.pkl")
@@ -29,7 +31,7 @@ print("Data loaded")
 # Final column has labels 
 X,Y = data[:,:-1], data[:,-1]
 Y = Y.astype('int') # Gives ValueError without this line
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size = 0.2, random_state = 42, stratify = Y)
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size = 0.3, random_state = 42, stratify = Y)
 print(y_train)
 print("Data split")
 
@@ -44,6 +46,6 @@ print("LR fitted")
 LR.predict(x_test)
 print("LR predicted")
 # Compare predicted values with actual values
-print(round(LR.score(x_test,y_test), 4)) # Accuracy: 38.75%
+print(round(LR.score(x_test,y_test), 4)) # Accuracy: 66.85%
 
 # Need to try other classifers: svm.SVC, MLPClassifier (could make our own NN instead), or RandomForestClassifier
