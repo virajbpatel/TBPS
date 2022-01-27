@@ -28,7 +28,7 @@ def build_model(num_features):
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape = (num_features,)))
     model.add(tf.keras.layers.Dense(32, activation = 'relu'))
-    model.add(tf.keras.layers.Dense(num_features, activation = 'softmax'))
+    model.add(tf.keras.layers.Dense(9, activation = 'softmax'))
     model.compile(
         optimizer = 'adam',
         loss = 'sparse_categorical_crossentropy',
@@ -64,8 +64,8 @@ def plot_heatmap(class_names, y_pred, y_test):
     ax.set_xlabel('Predicted class')
     ax.set_ylabel('True class')
     ax.set_title('Confusion Matrix')
-    ax.xaxis.set_ticklabels(class_names)
-    ax.yaxis.set_ticklabels(class_names)
+    ax.xaxis.set_ticklabels(class_names, rotation = 90)
+    ax.yaxis.set_ticklabels(class_names, rotation = 0)
     # Save the heatmap to file
     heatmapfig = heatmap.get_figure()
     heatmapfig.savefig('confusion_matrix.png')
@@ -73,6 +73,7 @@ def plot_heatmap(class_names, y_pred, y_test):
 def main():
     # Import data file
     df = pd.read_pickle("all_samples_df.pkl")
+    df = df.drop(columns = ['year'])
     cols = df.columns.tolist()
     # Record features and labels
     features, labels = cols[:-1], cols[-1]
@@ -110,7 +111,7 @@ def main():
     print(classification_report(y_test, y_pred, target_names = class_names))
     plot_heatmap(class_names, y_pred, y_test)
     plt.show()
-    model.save('/hep_models/kstar_nn')
+    model.save('/hep_models/kstar_nn_no_year')
     
     
 
