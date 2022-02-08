@@ -95,8 +95,16 @@ def particle_ID_check(df,                           #add cross probs if need be
     
     return(df4)
     
+def q2_cuts(df):
     
+    df1 = df[~df.q2.between(8.0, 11.0)]
+    df2 = df1[~df1.q2.between(12.5, 15.0)]
+    df3 = df2[df2['q2'] < 19.0]
+    df4 = df3[df3['q2'] > 0.1]
     
+    print("percentage dataframe removed =",(len(df)-len(df4))/len(df))
+    
+    return(df4)    
     
     
     
