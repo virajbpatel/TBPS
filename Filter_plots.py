@@ -63,10 +63,10 @@ pKmumu_piTok_kTop.name = r'$\Lambda^0 _b \rightarrow pK\mu\mu$ w/ $pK\leftrighta
 pKmumu_piTop.name = r'$\Lambda^0 _b \rightarrow pK\mu\mu$ w/ $p\leftrightarrow \pi$'
 #%%
 def IP_check(df, B0_Impact_parameter_chi2_max = 16,
-             B0_flight_disyance_chi2_min = 121,
+             B0_flight_disyance_chi2_min = 64,
              cos_DIRA_min = 0.9999,
              B0_endvertex_chi2_ndf_max = 8,
-             J_psi_emdvertex_chi2_max = 9,
+             J_psi_endvertex_chi2_max = 9,
              Kstar_endvertex_chi2_max = 9,
              Kstar_flight_distance_chi2_min = 9,
              mu_plus_impact_parameter_chi2_min = 9,
@@ -78,7 +78,7 @@ def IP_check(df, B0_Impact_parameter_chi2_max = 16,
     df2 = df1[df1["B0_FDCHI2_OWNPV"] > B0_flight_disyance_chi2_min]
     df3 = df2[df2["B0_DIRA_OWNPV"] > cos_DIRA_min]
     df4 = df3[df3["B0_ENDVERTEX_CHI2"]/df3["B0_ENDVERTEX_NDOF"] < B0_endvertex_chi2_ndf_max]
-    df5 = df4[df4["J_psi_ENDVERTEX_CHI2"]/df4["J_psi_ENDVERTEX_NDOF"] < J_psi_emdvertex_chi2_max]
+    df5 = df4[df4["J_psi_ENDVERTEX_CHI2"]/df4["J_psi_ENDVERTEX_NDOF"] < J_psi_endvertex_chi2_max]
     df6 = df5[df5["Kstar_ENDVERTEX_CHI2"]/df5["Kstar_ENDVERTEX_NDOF"] < Kstar_endvertex_chi2_max]
     df7 = df6[df6["Kstar_FDCHI2_OWNPV"] > Kstar_flight_distance_chi2_min]
 
@@ -92,48 +92,46 @@ def IP_check(df, B0_Impact_parameter_chi2_max = 16,
     return(df11)
     
 def mom_check(df, 
-              K_PT_max = 1000,
-              Pi_PT_max = 1000):
+              K_PT_min = 250,
+              Pi_PT_min = 250):
     
-    df1 = df[df["K_PT"] > K_PT_max]
-    df2 = df1[df1["Pi_PT"] > Pi_PT_max]
+    df1 = df[df["K_PT"] > K_PT_min]
+    df2 = df1[df1["Pi_PT"] > Pi_PT_min]
     
     print("percentage dataframe removed =",(len(df)-len(df2))/len(df))
 
     return(df2)
 
 def muon_PT_check(df,
-                  min_mu_PT=1760):
+                  min_mu_PT=800):
     
-    drops = []
-    for i in range(len(df)):
-        if df['mu_plus_PT'][i] < min_mu_PT and df['mu_minus_PT'][i] < min_mu_PT:
-            drops += [i]
-        else:
-            continue
-    if len(drops) != 0:
-        df1 = df.drop(labels=drops, axis=0)
-    else:
-        df1 = df
-    print("percentage dataframe removed =",(len(df)-len(df1))/len(df))
-    return (df1)
+    df1 = df[df['mu_plus_PT'] > min_mu_PT]
+    df2 = df1[df1['mu_minus_PT'] > min_mu_PT]
+    
+    print("percentage dataframe removed =",(len(df)-len(df2))/len(df))
+    return (df2)
 
 def invariant_mass_check(df,                #maybe add k star and j psi invarient
-                         min_B0_MM=5180,    #mass checks later if they don't destroy
-                         max_B0_MM=5380):   #the signal too much
+                         min_B0_MM=5170,    #mass checks later if they don't destroy
+                         max_B0_MM=5700,
+                         min_Kstar_MM = 790,
+                         max_Kstar_MM = 1000):   #the signal too much
     
     df1 = df[df["B0_MM"] > min_B0_MM]
     df2 = df1[df1["B0_MM"] < max_B0_MM]
     
+    df3 = df2[df2['Kstar_MM'] > min_Kstar_MM]
+    df4 = df3[df3['Kstar_MM'] < max_Kstar_MM]
+    
     print("percentage dataframe removed =",(len(df)-len(df2))/len(df))
     
-    return(df2)
+    return(df4)
     
 def particle_ID_check(df,                           #add cross probs if need be
-                      mu_plus_mu_min_prob = 0.6,
-                      mu_minus_mu_min_prob = 0.6,
-                      K_K_min_prob = 0.6,
-                      pi_pi_min_prob = 0.6):
+                      mu_plus_mu_min_prob = 0.5,
+                      mu_minus_mu_min_prob = 0.5,
+                      K_K_min_prob = 0.5,
+                      pi_pi_min_prob = 0.5):
     
     df1 = df[df["mu_plus_MC15TuneV1_ProbNNmu"] > mu_plus_mu_min_prob]
     df2 = df1[df1["mu_minus_MC15TuneV1_ProbNNmu"] > mu_minus_mu_min_prob]
@@ -160,39 +158,61 @@ def q2_cuts(df):
 # how much data is cut
 def check_all(df):
     # For some reason the muon check gets an error if it is not run first
-    df0 = muon_PT_check(df)
+    df0 = q2_cuts(df)
+    print('q2 check:')
+    per_rem0 = (len(df)-len(df0))/len(df)
     print("percentage total dataframe removed =",(len(df)-len(df0))/len(df))
     print(len(df0))
     
-    df1 = q2_cuts(df0)
+    df1 = muon_PT_check(df0)
+    print('Muon PT check:')
+    per_rem1 = (len(df)-len(df1))/len(df)
+    diff_rem1 = per_rem1 - per_rem0
     print("percentage total dataframe removed =",(len(df)-len(df1))/len(df))
+    print(diff_rem1)
     print(len(df1))
     
     df2 = invariant_mass_check(df1)
+    print('Mass check:')
+    per_rem2 = (len(df)-len(df2))/len(df)
+    diff_rem2 = per_rem2 - per_rem1
     print("percentage total dataframe removed =",(len(df)-len(df2))/len(df))
+    print(diff_rem2)
     print(len(df2))
     
     df3 = particle_ID_check(df2)
+    print('PID check:')
+    per_rem3 = (len(df)-len(df3))/len(df)
+    diff_rem3 = per_rem3 - per_rem2
     print("percentage total dataframe removed =",(len(df)-len(df3))/len(df))
+    print(diff_rem3)
     print(len(df3))
     
     df4 = IP_check(df3)
+    print('IP, vertex check:')
+    per_rem4 = (len(df)-len(df4))/len(df)
+    diff_rem4 = per_rem4 - per_rem3
     print("percentage total dataframe removed =",(len(df)-len(df4))/len(df))
+    print(diff_rem4)
     print(len(df4))
     
     df5 = mom_check(df4)
+    print('Momentum check:')
+    per_rem5 = (len(df)-len(df5))/len(df)
+    diff_rem5 = per_rem5 - per_rem4
     print("percentage total dataframe removed =",(len(df)-len(df5))/len(df))
+    print(diff_rem5)
     print(len(df5))
     print('_______________________________')
     return df5
 #%%
 tot_filt = check_all(total)
-sig_filt = check_all(sig)
-acc_filt = check_all(accept)
+# sig_filt = check_all(sig)
+# acc_filt = check_all(accept)
 
 tot_filt.name = 'Total filtered'
-sig_filt.name = 'SM filtered'
-acc_filt.name = 'Acceptance Filtered'
+# sig_filt.name = 'SM filtered'
+# acc_filt.name = 'Acceptance Filtered'
 #%%
 def histogram(data_frames, label, bin_range, bin_N):
     bins = np.linspace(bin_range[0], bin_range[1], bin_N)
@@ -251,19 +271,19 @@ def normalhistogram(data_frames, label, bin_range, bin_N):
 # Plot whatever column for the list of dataframes and bin range you want
 # The code should print out how many values are outside bin range so it can be 
 # adjusted accordingly
-datasets = [total, sig, tot_filt, sig_filt, accept, acc_filt]
+datasets = [total, sig, tot_filt]
 # datasets = [total, sig, jpsi, psi2S, phimumu, jpsi_mu_k_swap, jpsi_mu_pi_swap, 
 #             k_pi_swap, pKmumu_piTok_kTop, pKmumu_piTop]
 bin_range = [-1, 1]
 bin_number = 50
 value = 'costhetal'
 # histogram(datasets, value, bin_range, bin_number)
-normalhistogram(datasets, value, bin_range, bin_number)
-totnormalhistogram(datasets, value, bin_range, bin_number)
+# normalhistogram(datasets, value, bin_range, bin_number)
+# totnormalhistogram(datasets, value, bin_range, bin_number)
 #%%
-histogram([tot_filt], 'B0_MM', [5180, 5380], 50)
-normalhistogram([total, sig, tot_filt, sig_filt], 'B0_MM', [5180, 5380], 50)
-totnormalhistogram([total, sig, tot_filt, sig_filt], 'B0_MM', [5180, 5380], 50)
+histogram([total], 'B0_MM', [5100, 5700], 50)
+normalhistogram([total, sig, tot_filt], 'B0_MM', [5100, 5700], 50)
+totnormalhistogram([total, sig, tot_filt], 'B0_MM', [5100, 5700], 50)
 #%%
 def gauss(x, A, mu, sig):
     g = A / (np.sqrt(2*np.pi) * sig) * np.exp( -(x-mu)**2/(2*sig**2))
@@ -306,18 +326,19 @@ def fittotnormalhistogram(data_frames, label, bin_range, bin_N):
     title = str(label) + ' Nomralised Histogram'
     plt.title(title)
     plt.xlabel(r'Reconstructed $B^0$ mass (MeV/c$^2$)')
-    plt.ylabel(r'Frac Candidate Count / 4 MeV/c$^2$')
+    ylabel = r'Frac Candidate Count / %.1f MeV/c$^2$' % (width)
+    plt.ylabel(ylabel)
     plt.grid('both')
     plt.show()
 
-fittotnormalhistogram([tot_filt], 'B0_MM', [5180, 5380], 50)
+fittotnormalhistogram([tot_filt], 'B0_MM', [5170, 5700], 50)
 #%%
 # This plots a 2d histogram of the distribution of events at different B0 mass and 
 # q^2 values
 def qsquared_inv_m(data, den=False):
     b0_m = data['B0_MM'].to_numpy()
     q2 = data['q2'].to_numpy()
-    x_edges = np.linspace(5180, 5380, 50)
+    x_edges = np.linspace(5100, 5600, 50)
     y_edges = np.linspace(0, 19, 50)
     
     plt.clf()
