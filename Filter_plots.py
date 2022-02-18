@@ -29,50 +29,25 @@ total = pd.read_pickle('data/total_dataset.pkl')
 accept = pd.read_pickle('data/acceptance_mc.pkl')
 # The signal decay, simulated as per the Standard Model
 sig = pd.read_pickle('data/signal.pkl')
-#Signal decay but with kaon reconstructed as pion and pion as kaon
-k_pi_swap = pd.read_pickle('data/k_pi_swap.pkl')
-# B_0 to J/psi
-jpsi = pd.read_pickle('data/jpsi.pkl')
-# J/psi with muon reconstructed as kaon and kaon reconstructed as muon
-jpsi_mu_k_swap = pd.read_pickle('data/jpsi_mu_k_swap.pkl')
-# J/psi with muon reconstructed as pion and pion reconstructed as muon
-jpsi_mu_pi_swap = pd.read_pickle('data/jpsi_mu_pi_swap.pkl')
-# B_0 to psi2S
-psi2S = pd.read_pickle('data/psi2S.pkl')
 
-# B_0 to (phi to KK)\mu\mu 
-phimumu = pd.read_pickle('data/phimumu.pkl')
-# Lam decays
-pKmumu_piTok_kTop = pd.read_pickle('data/pKmumu_piTok_kTop.pkl')
-pKmumu_piTop = pd.read_pickle('data/pKmumu_piTop.pkl')
-
-#%%
 # This names each dataframe so they are printed correctly in the plot labels
 # The plotting functions below will break if the dataframes are not named
 total.name = 'total_dataset'
 accept.name = 'Acceptance'
 sig.name = 'Simulated SM Signal'
-k_pi_swap.name = 'Signal w/ $K\pi\leftrightarrow \pi K$'
-jpsi.name = r'$B^0\rightarrow (J/\psi\rightarrow \mu\mu)K^{*0}$'
-jpsi_mu_k_swap.name = r'$J/\psi$ w/ $\mu K\leftrightarrow K\mu$'
-jpsi_mu_pi_swap.name = r'$J/\psi$ w/ $\mu \pi\leftrightarrow \pi\mu$'
 
-psi2S.name = r'$B^0\rightarrow (\psi (2S)\rightarrow\mu\mu)K^{*0}$'
-phimumu.name = r'$B^0 _s\rightarrow (\phi\rightarrow KK)\mu\mu$, w/ $KK\leftrightarrow K\pi$'
-pKmumu_piTok_kTop.name = r'$\Lambda^0 _b \rightarrow pK\mu\mu$ w/ $pK\leftrightarrow K\pi$'
-pKmumu_piTop.name = r'$\Lambda^0 _b \rightarrow pK\mu\mu$ w/ $p\leftrightarrow \pi$'
 #%%
-def IP_check(df, B0_Impact_parameter_chi2_max = 16,
-             B0_flight_disyance_chi2_min = 64,
+def IP_check(df, B0_Impact_parameter_chi2_max = 16, #all vals are < 16.1
+             B0_flight_disyance_chi2_min = 64, #All values are greater than 62, barely cuts
              cos_DIRA_min = 0.9999,
-             B0_endvertex_chi2_ndf_max = 8,
-             J_psi_endvertex_chi2_max = 9,
-             Kstar_endvertex_chi2_max = 9,
-             Kstar_flight_distance_chi2_min = 9,
-             mu_plus_impact_parameter_chi2_min = 9,
-             mu_minus_impact_parameter_chi2_min = 9,
-             K_impact_parameter_chi2_min = 9,
-             pi_impact_parameter_chi2_min = 9):
+             B0_endvertex_chi2_ndf_max = 8, #No impact
+             J_psi_endvertex_chi2_max = 9, #all vals are < 12
+             Kstar_endvertex_chi2_max = 9, #all vals are < 12
+             Kstar_flight_distance_chi2_min = 9, #No impact all vals >= 10
+             mu_plus_impact_parameter_chi2_min = 9, #all vals are > 6
+             mu_minus_impact_parameter_chi2_min = 9, #all vals are > 6
+             K_impact_parameter_chi2_min = 9, #all vals are > 6
+             pi_impact_parameter_chi2_min = 9): #all vals are > 6
 
     df1 = df[df["B0_IPCHI2_OWNPV"] < B0_Impact_parameter_chi2_max]
     df2 = df1[df1["B0_FDCHI2_OWNPV"] > B0_flight_disyance_chi2_min]
@@ -103,7 +78,7 @@ def mom_check(df,
     return(df2)
 
 def muon_PT_check(df,
-                  min_mu_PT=800):
+                  min_mu_PT=800): # All mu_PT > 1000, so this has no effect
     
     df1 = df[df['mu_plus_PT'] > min_mu_PT]
     df2 = df1[df1['mu_minus_PT'] > min_mu_PT]
@@ -111,11 +86,11 @@ def muon_PT_check(df,
     print("percentage dataframe removed =",(len(df)-len(df2))/len(df))
     return (df2)
 
-def invariant_mass_check(df,                #maybe add k star and j psi invarient
-                         min_B0_MM=5170,    #mass checks later if they don't destroy
-                         max_B0_MM=5700,
-                         min_Kstar_MM = 790,
-                         max_Kstar_MM = 1000):   #the signal too much
+def invariant_mass_check(df,                
+                         min_B0_MM=5170,  # Very few below this
+                         max_B0_MM=5700,  # All values are below his threshold
+                         min_Kstar_MM = 790, # Kstar check a lot more stringent - could widen
+                         max_Kstar_MM = 1000):
     
     df1 = df[df["B0_MM"] > min_B0_MM]
     df2 = df1[df1["B0_MM"] < max_B0_MM]
@@ -280,7 +255,7 @@ value = 'costhetal'
 # histogram(datasets, value, bin_range, bin_number)
 # normalhistogram(datasets, value, bin_range, bin_number)
 # totnormalhistogram(datasets, value, bin_range, bin_number)
-#%%
+
 histogram([total], 'B0_MM', [5100, 5700], 50)
 normalhistogram([total, sig, tot_filt], 'B0_MM', [5100, 5700], 50)
 totnormalhistogram([total, sig, tot_filt], 'B0_MM', [5100, 5700], 50)
@@ -333,6 +308,54 @@ def fittotnormalhistogram(data_frames, label, bin_range, bin_N):
 
 fittotnormalhistogram([tot_filt], 'B0_MM', [5170, 5700], 50)
 #%%
+def gauss_exp(x, A, mu, sig, B, m, b, c):
+    g = A * np.exp( -(x-mu)**2/(2*sig**2)) + B*np.exp(-m*(x-b)) + c
+    return g
+
+def fittotnormalhistogram_exp(data_frame, label, bin_range, bin_N):
+    # bins = np.linspace(bin_range[0], bin_range[1], bin_N)
+    plt.clf()
+    
+    x = data_frame[str(label)].to_numpy()
+    N, b = np.histogram(x, bin_N, range=bin_range)
+    N_w = N/len(x)
+    err = np.sqrt(N)/len(x)
+    b_vals = (b[1:] + b[:-1]) / 2
+    width = b[1]-b[0] 
+    plt.errorbar(b_vals, N_w, xerr=width/2, yerr=err, fmt='ko', capsize=0, markersize=3, label=data_frame.name)
+    
+    # plt.bar(b_vals, N_w, width=width, alpha=0.2, linewidth=0)
+    
+    params, cov = curve_fit(gauss_exp, b_vals, N_w, p0 = [0.18, 5280, 20, 0.6, 0.02, 5010, 0.002])
+    print(params)
+    for i in range(len(params)):
+        print(np.sqrt(abs(cov[i][i])))
+    
+    exp = params[3]*np.exp(-params[4]*(b_vals-params[5])) + params[6]
+    plt.plot(b_vals, exp, 'k--')
+    plt.fill_between(b_vals, 0, exp, color = 'cyan', alpha=0.2)
+    
+    plt.plot(b_vals, gauss_exp(b_vals, params[0], params[1], params[2], params[3], params[4], params[5], params[6]), 'r--')
+    
+    
+    
+    occur1 = x > bin_range[1]
+    occur2 = x < bin_range[0]
+    left_out = occur1.sum() + occur2.sum()
+    print('Data set %s: %d/%d points left out for given bins, %f' %(data_frame.name, left_out,len(x), left_out/len(x)))
+    plt.legend()
+    title = str(label) + ' Nomralised Histogram'
+    plt.title(title)
+    plt.xlabel(r'Reconstructed $B^0$ mass (MeV/c$^2$)')
+    ylabel = r'Frac Candidate Count / %.1f MeV/c$^2$' % (width)
+    plt.ylabel(ylabel)
+    plt.grid('both')
+    plt.show()
+
+
+fittotnormalhistogram_exp(tot_filt, 'B0_MM', [5170, 5700], 50)
+
+#%%
 # This plots a 2d histogram of the distribution of events at different B0 mass and 
 # q^2 values
 def qsquared_inv_m(data, den=False):
@@ -350,3 +373,63 @@ def qsquared_inv_m(data, den=False):
     plt.show()
     
 qsquared_inv_m(tot_filt, False)
+#%%
+# Considering individual q^2 bins:
+def cosl_histogram(data_frame, label, bin_range, bin_N, bin_name):
+    # bins = np.linspace(bin_range[0], bin_range[1], bin_N)
+    plt.clf()
+    for i in range(len(data_frame)):
+        q2bin = data_frame[i][data_frame[i].q2.between(bin_range[0], bin_range[1])]
+        q2bin.name = r'$q^2 \in [%.2f, %.2f]$' % (bin_range[0], bin_range[1])
+        
+        x = q2bin[str(label)].to_numpy()
+        N, b = np.histogram(x, bin_N, range=[-1, 1])
+        err = np.sqrt(N)
+        b_vals = (b[1:] + b[:-1]) / 2
+        width = b[1]-b[0]
+        plt.errorbar(b_vals, N, xerr = width/2, yerr=err, fmt='ko', capsize=0, markersize=5, label=data_frame[i].name)
+    plt.legend()
+    title = str(bin_name) +' ' + str(q2bin.name) + r' $\cos (\theta_l)$ Normalised Histogram'
+    plt.title(title)
+    ylabel = 'Fractional Candidates / %.1f' % (width)
+    plt.ylabel(ylabel)
+    plt.xlabel(r'\cos (\theta_l)')
+    plt.grid('both')
+    plt.show()
+    
+def cosl_histogram_normal(data_frame, label, bin_range, bin_N, bin_name):
+    # bins = np.linspace(bin_range[0], bin_range[1], bin_N)
+    plt.clf()
+    for i in range(len(data_frame)):
+        q2bin = data_frame[i][data_frame[i].q2.between(bin_range[0], bin_range[1])]
+        q2bin.name = r'$q^2 \in [%.2f, %.2f]$' % (bin_range[0], bin_range[1])
+        
+        x = q2bin[str(label)].to_numpy()
+        N, b = np.histogram(x, bin_N, range=[-1, 1])
+        N_w = N/len(x)
+        err = np.sqrt(N)/len(x)
+        b_vals = (b[1:] + b[:-1]) / 2
+        width = b[1]-b[0]
+        plt.errorbar(b_vals, N_w, xerr = width/2, yerr=err, fmt='o', capsize=0, markersize=5, label=data_frame[i].name)
+    plt.legend()
+    title = str(bin_name) +' ' + str(q2bin.name) + r' $\cos (\theta_l)$ Normalised Histogram'
+    plt.title(title)
+    ylabel = 'Fractional Candidates / %.1f' % (width)
+    plt.ylabel(ylabel)
+    plt.xlabel(r'$\cos (\theta_l)$')
+    plt.grid('both')
+    plt.show()
+    
+def cosl_histall(data_frame, norm = True):
+    q2_bins = [[0.1, 0.98], [1.1, 2.5], [2.5, 4.0], [4.0, 6.0], [6.0, 8.0], [15.0, 17.0],
+           [17.0, 19.0], [11.0, 12.5], [1.0, 6.0], [15.0, 17.9]]
+    if norm == True:
+        for i in range(len(q2_bins)):
+            b = 'Bin %d' % (i)
+            cosl_histogram_normal(data_frame, 'costhetal', q2_bins[i], 20, b)
+    else:
+        for i in range(len(q2_bins)):
+            b = 'Bin %d' % (i)
+            cosl_histogram(data_frame, 'costhetal', q2_bins[i], 20, b)
+
+cosl_histall([tot_filt, sig])
