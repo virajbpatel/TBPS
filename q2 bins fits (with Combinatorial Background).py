@@ -107,7 +107,7 @@ def log_likelihood_ctl(fl, afb, a_1, a_2, _bin):
     return - np.sum(np.log(normalised_scalar_array))
 
 
-#%%
+    #%%
 bin_width = 25
 fl_array = []
 afb_array = []
@@ -154,7 +154,7 @@ for b in range(10):
     norm_signal, norm_background= plotting_func(fls[0], afbs[0], a_1s[0], a_2s[0], bins[b][i].sort_values())
     plt.errorbar((e[:-1] + 0.5*e[1] - 0.5*e[0]), h, yerr = np.sqrt(h * len(bins[b][i]))/len(bins[b][i]), fmt = '.', color = 'blue')
     plt.plot(bins[b][i].sort_values(), norm_d2gamma_p_d2q2_dcosthetal(fls[0], afbs[0],a_1s[0], a_2s[0], bins[b][i].sort_values()), label = "Total fit")
-    plt.plot(bins[b][i].sort_values(), norm_signal, label = "Signal fit")
+    plt.plot(bins[b][i].sort_values(), norm_signal, label = f'fl =  {np.round(fls[0], decimal_places)} pm {np.round(fl_errs[0], decimal_places)} Afb = {np.round(afbs[0], decimal_places)} pm {np.round(afb_errs[0], decimal_places)}')
     plt.plot(bins[b][i].sort_values(), norm_background, label = "Background fit")
     plt.title(f'{data_files[0]} bin {b}')
     plt.legend()
