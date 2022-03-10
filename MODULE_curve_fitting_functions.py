@@ -12,6 +12,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as op
 
+##Changing fonts
+import matplotlib
+matplotlib.rcParams['font.sans-serif'] = "Times New Roman"
+# Then, "ALWAYS use sans-serif fonts"
+matplotlib.rcParams['font.family'] = "sans-serif"
+
+
+params = {
+        'axes.labelsize':12,
+        'axes.titlesize':12,
+        'font.size':12,
+        'figure.figsize': [7,4],
+        'mathtext.fontset': 'stix',
+        }
+plt.rcParams.update(params)
 
 """
 The binning scheme that is used, based on LHCb convention
@@ -118,45 +133,58 @@ def integrate(x,y):
         da_list.append(da)
     A = np.sum(da_list)
     return abs(A)
-    
-def d2gamma_p_d2q2_dcostheta(fl, afb, cos_theta_l):
-    """
-    Returns the pdf defined above
-    :param fl: f_l observable
-    :param afb: a_fb observable
-    :param cos_theta_l: cos(theta_l)
-    :return:
-    """
-    ctl = cos_theta_l
-    c2tl = 2 * ctl ** 2 - 1
-    scalar_array = 3/8 * (3/2 - 1/2 * fl + 1/2 * c2tl * (1 - 3 * fl) + 8/3 * afb * ctl) * acceptance_func(ctl)
-    return scalar_array
 
-def norm_d2gamma_p_d2q2_dcostheta(fl, afb, cos_theta_l):
-    """
-    Returns the pdf defined above
-    :param fl: f_l observable
-    :param afb: a_fb observable
-    :param cos_theta_l: cos(theta_l)
-    :return:
-    """
-    scalar_array = d2gamma_p_d2q2_dcostheta(fl, afb, cos_theta_l)
-    norm_factor = integrate(cos_theta_l, d2gamma_p_d2q2_dcostheta(fl=fl, afb=afb, cos_theta_l=cos_theta_l))
-    normalised_scalar_array = scalar_array /norm_factor  # normalising scalar array to account for the non-unity acceptance function
-    return normalised_scalar_array
+def integrate2(x,y):
+    da_list = []
+    for i in range(len(x)-1):
+        dx = x[i+1] - x[i]
+        avg_y = (y[i+1] + y[i])/2
+        da = avg_y*dx
+        if da < 0:
+            da = 0
+        da_list.append(da)
+    A = np.sum(da_list)
+    return abs(A)
 
-def log_likelihood(fl, afb, _bin):
+def Gauss(x, A, mu, sigma):
     """
-    Returns the negative log-likelihood of the pdf defined above
-    :param fl: f_l observable
-    :param afb: a_fb observable
-    :param _bin: number of the bin to fit
-    :return:
+    Gaussian with height A, mean mu and standard deviation sigma
     """
-    _bin = bins[int(_bin)]
-    ctl = _bin['costhetal']
-    normalised_scalar_array = norm_d2gamma_p_d2q2_dcostheta(fl=fl, afb=afb, cos_theta_l= ctl)
-    return - np.sum(np.log(normalised_scalar_array))
+    return A * np.exp((-0.5 * ((x - mu) / sigma)**2))
+
+def exp_decay(x, B, lamda):
+    """
+    Exponential decay with initial value B and decay exponent lambda
+    """
+    exponent = np.longdouble(-lamda * x)
+    return B * np.exp(exponent)
+
+def gaussian_exponent_fit(x, A, mu, sigma, B, lamda):
+    """
+    A gaussian with exponential decay curve
+    """
+    return Gauss(x, A, mu, sigma) + exp_decay(x, B, lamda)
+
+def read_data_into_bins(filtered_data, acceptance_data, file_type=0):
+    """
+    Read the filtered data and acceptance data in pkl = 0 or csv = 1, and returns
+    filtered_dataframe, filtered_dataframe_in_q2_bins, acceptance_dataframe, acceptance_dataframe_in_q2_bins
+    """
+    if file_type == 0:
+        file_type = 'pkl'
+        df = pd.read_pickle(f'{filtered_data}.{file_type}')
+        bins = create_sorted_q2_bins(df)
+        df_mc = pd.read_pickle(f'{acceptance_data}.{file_type}')
+        bins_mc = create_sorted_q2_bins(df_mc)
+    elif file_type == 1:
+        file_type = 'csv'
+        df = pd.read_csv(f'{filtered_data}.{file_type}')
+        bins = create_sorted_q2_bins(df)
+        df_mc = pd.read_csv(f'{acceptance_data}.{file_type}')
+        bins_mc = create_sorted_q2_bins(df_mc)
+    else: 
+        raise Exception('Wrong file type')
+    return df, bins, df_mc, bins_mc
 
 """
 Some example code below used below. It is currently commented out, and should be commented out 
