@@ -151,7 +151,7 @@ for i in range(B):
     n, e, _ = plt.hist(BINS[i].B0_MM, bins = 25)
     ec = mcf.center_bins(e)
     ge_params, ge_cov = curve_fit(mcf.gaussian_exponent_fit, ec[3:], n[3:], 
-                                  p0 = [200, 5280, 180, exp_guess[0][i], exp_guess[1][i]])
+                                  p0 = [200, 5280, 180, exp_guess[0][i], exp_guess[1][i]], maxfev = 30000)
     plt.plot(np.arange(5100, 5700), mcf.gaussian_exponent_fit(np.arange(5100, 5700), *ge_params))
     plt.show()
     SIGNAL = 0
