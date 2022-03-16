@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as op
-
+import scipy.special as ssp
 ##Changing fonts
 import matplotlib
 matplotlib.rcParams['font.sans-serif'] = "Times New Roman"
@@ -19,13 +19,15 @@ matplotlib.rcParams['font.sans-serif'] = "Times New Roman"
 matplotlib.rcParams['font.family'] = "sans-serif"
 
 
-params = {
-        'axes.labelsize':12,
-        'axes.titlesize':12,
-        'font.size':12,
-        'figure.figsize': [7,4],
-        'mathtext.fontset': 'stix',
-        }
+params = {'axes.labelsize': 21,
+          'legend.fontsize': 12,
+          'xtick.labelsize': 18,
+          'ytick.labelsize': 18,
+          'figure.figsize': [8.8, 8.8/1.618]}
+font = {'family' : 'Times New Roman',
+        'size'   : 14}
+plt.rc('font', **font)
+plt.rcParams['mathtext.fontset'] = 'cm'
 plt.rcParams.update(params)
 
 """
@@ -152,12 +154,22 @@ def Gauss(x, A, mu, sigma):
     """
     return A * np.exp((-0.5 * ((x - mu) / sigma)**2))
 
+def Gauss_int(a, b, A, mu, sigma):
+    I = A*sigma*np.sqrt(np.pi/2) * (ssp.erf((b-mu)/(np.sqrt(2)*sigma)) - ssp.erf((a-mu)/(np.sqrt(2)*sigma)))
+    return I
+
 def exp_decay(x, B, lamda):
     """
     Exponential decay with initial value B and decay exponent lambda
     """
     exponent = np.longdouble(-lamda * x)
     return B * np.exp(exponent)
+
+def exp_int(a, b, B, lamda):
+    low = exp_decay(a, B, lamda)
+    up = exp_decay(b, B, lamda)
+    I = (low-up)/lamda
+    return I
 
 def gaussian_exponent_fit(x, A, mu, sigma, B, lamda):
     """
@@ -185,6 +197,32 @@ def read_data_into_bins(filtered_data, acceptance_data, file_type=0):
     else: 
         raise Exception('Wrong file type')
     return df, bins, df_mc, bins_mc
+
+
+def read_data_into_bins2(filtered_data, acceptance_data, unfiltered_data, file_type=0):
+    """
+    Read the filtered data and acceptance data in pkl = 0 or csv = 1, and returns
+    filtered_dataframe, filtered_dataframe_in_q2_bins, acceptance_dataframe, acceptance_dataframe_in_q2_bins
+    """
+    if file_type == 0:
+        file_type = 'pkl'
+        df = pd.read_pickle(f'{filtered_data}.{file_type}')
+        bins = create_sorted_q2_bins(df)
+        df_mc = pd.read_pickle(f'{acceptance_data}.{file_type}')
+        bins_mc = create_sorted_q2_bins(df_mc)
+        df_uf = pd.read_pickle(f'{unfiltered_data}.{file_type}')
+        bins_uf = create_sorted_q2_bins(df_uf)
+    elif file_type == 1:
+        file_type = 'csv'
+        df = pd.read_csv(f'{filtered_data}.{file_type}')
+        bins = create_sorted_q2_bins(df)
+        df_mc = pd.read_csv(f'{acceptance_data}.{file_type}')
+        bins_mc = create_sorted_q2_bins(df_mc)
+        df_uf = pd.read_pickle(f'{unfiltered_data}.{file_type}')
+        bins_uf = create_sorted_q2_bins(df_uf)
+    else: 
+        raise Exception('Wrong file type')
+    return df, bins, df_mc, bins_mc, df_uf, bins_uf
 
 """
 Some example code below used below. It is currently commented out, and should be commented out 
