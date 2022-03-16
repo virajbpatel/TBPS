@@ -74,7 +74,7 @@ def chebyshev(x, a0, a1, a2):
 
 def norm_chebyshev(x, a0, a1, a2): #!!
     y = chebyshev(x, a0, a1, a2)
-    x = np.linspace(-1,1,10000) #!!
+    x = np.linspace(-1,1,5000) #!!
     norm_factor = integrate2(x, chebyshev(x, a0, a1, a2))
     return y/norm_factor
 
@@ -85,7 +85,7 @@ def pdf(fl, afb, _bin, cos_theta_l): #!!
     return scalar_array * mcf.polynomial(ctl, *X_PARAMS[_bin])
 
 def norm_pdf_without_bg(fl, afb, _bin, cos_theta_l): #!!
-    cos_theta_l_acc = np.linspace(-1,1,10000) #!!
+    cos_theta_l_acc = np.linspace(-1,1,5000) #!!
     norm_factor = integrate2(cos_theta_l_acc, pdf(fl=fl, afb=afb, _bin = _bin, cos_theta_l=cos_theta_l_acc))
     return pdf(fl, afb, _bin, cos_theta_l)/norm_factor
 
@@ -96,7 +96,7 @@ def pdf_with_bg(fl, afb, a0, a1, a2, _bin, cos_theta_l): #!!!
 
 def norm_pdf(fl, afb, a0, a1, a2, _bin, cos_theta_l): #!! 
     scalar_array = pdf_with_bg(fl, afb, a0, a1, a2, _bin, cos_theta_l)
-    cos_theta_l_acc = np.linspace(-1,1,10000)
+    cos_theta_l_acc = np.linspace(-1,1,5000)
     norm_factor = integrate2(cos_theta_l_acc, pdf_with_bg(fl, afb, a0, a1, a2, _bin, cos_theta_l_acc))
     normalised_scalar_array = scalar_array /norm_factor  
     return normalised_scalar_array
@@ -107,10 +107,16 @@ def log_likelihood_ctl(fl, afb, a0, a1, a2, _bin): #!!
     _BIN = BINS[int(_bin)][(BINS[int(_bin)].B0_MM >= 5240)  & (BINS[int(_bin)].B0_MM <=5355)] # 2nd option: B0_MM cuts in q2 bins
     ctl = _BIN['costhetal']
     normalised_scalar_array = norm_pdf(fl=fl, afb=afb, a0=a0, a1=a1, a2=a2, _bin = int(_bin), cos_theta_l= ctl)
-    return - np.sum(np.log(normalised_scalar_array))
+    dummy_x = np.linspace(-1,1,1000)
+    check = pdf(fl, afb, int(_bin), dummy_x)
+    physicalness = 1
+    if np.sum([check < 0]):
+        physicalness = 1 + np.sum([check < 0])/10
+    
+    return - np.sum(np.log(normalised_scalar_array)) * physicalness
 
 def norm_factor_signal_bg(fl, afb, a0, a1, a2, _bin): #!!
-    cos_theta_l = np.linspace(-1,1,10000) #!!
+    cos_theta_l = np.linspace(-1,1,5000) #!!
     Y = pdf_with_bg(fl, afb, a0, a1, a2, _bin, cos_theta_l)
     norm_factor = integrate2(cos_theta_l, Y)
     return norm_factor
@@ -151,7 +157,7 @@ for i in range(B):
     n, e, _ = plt.hist(BINS[i].B0_MM, bins = 25)
     ec = mcf.center_bins(e)
     ge_params, ge_cov = curve_fit(mcf.gaussian_exponent_fit, ec[3:], n[3:], 
-                                  p0 = [200, 5280, 180, exp_guess[0][i], exp_guess[1][i]], maxfev = 30000)
+                                  p0 = [200, 5280, 180, exp_guess[0][i], exp_guess[1][i]])
     plt.plot(np.arange(5100, 5700), mcf.gaussian_exponent_fit(np.arange(5100, 5700), *ge_params))
     plt.show()
     SIGNAL = 0
@@ -196,7 +202,7 @@ for b in range(10):
     dont seems to have found good limits which allows the fit to converge. 
     """
     m.limits=((-1.0, 1.0), (-1.0, 1.0), #!!
-              (ST[2]-SD[2], ST[2]+SD[2]), (ST[3], ST[3]), (ST[4], ST[4]), None) 
+              (ST[2], ST[2]), (ST[3], ST[3]), (ST[4], ST[4]), None) 
     m.migrad()
     m.hesse()
     bin_results_to_check = m
@@ -217,7 +223,7 @@ for b in range(10):
     signal = norm_pdf_without_bg(fls[0], afbs[0], b, X)                                                                        
     background = BG_RATIO[b]/(1-BG_RATIO[b]) * norm_chebyshev(X, a0s[0], a1s[0], a2s[0])
     norm_factor = norm_factor_signal_bg(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b)
-    h, e, _ = plt.hist(X, bins = NO_OF_BINS, density = True, histtype = 'step', color = 'tab:blue')
+    h, e, _ = plt.hist(X, bins = NO_OF_BINS, density = True, histtype = 'step', color = 'tab:blue', range = [-1,1])
     plt.errorbar(mcf.center_bins(e), h, yerr = np.sqrt(h * len(X))/len(X), fmt = '.', color = 'tab:blue')
     plt.plot(X, norm_pdf(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b, BINS[b][v].sort_values()),
              label = f"Total Fit: fl = {np.round(fls, decimal_places)} pm {np.round(fl_errs, decimal_places)}, afb = {np.round(afbs, decimal_places)} pm {np.round(afb_errs, decimal_places)}")
