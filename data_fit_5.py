@@ -2,7 +2,7 @@
 """
 Created on Wed Mar  9 20:08:03 2022
 
-@author: kevin
+@author: kevin, the legend
 READ ME
 4th version of the data-fitting code
 Fitting over costhetal
@@ -99,10 +99,11 @@ def chebyshev(x, a0, a1, a2):
     return a0 + a1 * x + a2 * (2 * x ** 2 -1)
 
 def norm_chebyshev(x, a0, a1, a2): #!!
-    y = chebyshev(x, a0, a1, a2)
-    x = np.linspace(-1,1,10000) #!!
-    norm_factor = integrate2(x, chebyshev(x, a0, a1, a2))
+    y = chb.chebval(x, [a0, a1, a2])
+    # x = np.linspace(-1,1,10000) #!!
+    norm_factor = chb.chebval(1, chb.chebint([a0, a1, a2], lbnd=-1, k=0))
     return y/norm_factor
+
 
 def pdf(fl, afb, _bin, cos_theta_l): #!!
     ctl = cos_theta_l 
@@ -130,10 +131,16 @@ def norm_pdf(fl, afb, a0, a1, a2, _bin, cos_theta_l): #!!
 
 def log_likelihood_ctl(fl, afb, a0, a1, a2, _bin): #!!
     # _BIN = BINS[int(_bin)] # 1st option: all data in q2 bins
-    _BIN = BINS[int(_bin)][(BINS[int(_bin)].B0_MM >= 5240)  & (BINS[int(_bin)].B0_MM <=5320)] # 2nd option: B0_MM cuts in q2 bins
+    _BIN = BINS[int(_bin)][(BINS[int(_bin)].B0_MM >= 5240)  & (BINS[int(_bin)].B0_MM <=5355)] # 2nd option: B0_MM cuts in q2 bins
     ctl = _BIN['costhetal']
     normalised_scalar_array = norm_pdf(fl=fl, afb=afb, a0=a0, a1=a1, a2=a2, _bin = int(_bin), cos_theta_l= ctl)
-    return - np.sum(np.log(normalised_scalar_array))
+    dummy_x = np.linspace(-1,1,1000)
+    check = pdf(fl, afb, int(_bin), dummy_x)
+    physicalness = 1
+    if np.sum([check < 0]):
+        physicalness = 1 + np.sum([check < 0])/10
+    
+    return - np.sum(np.log(normalised_scalar_array)) * physicalness
 
 def norm_factor_signal_bg(fl, afb, a0, a1, a2, _bin): #!!
     cos_theta_l = np.linspace(-1,1,10000) #!!
@@ -279,23 +286,27 @@ for b in range(10):
     
     b_c = (b_w[1:] + b_w[:-1]) / 2
     n_w_err = np.sqrt(n)*(n_w[5]/n[5])
-    plt.errorbar(b_c, n_w, yerr = n_w_err, xerr = (b_w[1]-b_w[0])/2, fmt = '.', color = 'k', markersize=4)
+    n_err = np.sqrt(n)
+    plt.errorbar(b_c, n, yerr = n_err, xerr = (b_w[1]-b_w[0])/2, fmt = 'o', color = 'k', markersize=4)
     
     
     # plt.errorbar(mcf.center_bins(e), h, yerr = np.sqrt(h * len(X))/len(X), fmt = '.', color = 'tab:blue')
-    plt.plot(vals, norm_pdf(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b, vals), 'r--',
+    plt.plot(vals, (n[5]/n_w[5])*norm_pdf(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b, vals), 'r--',
              label = f"Total Fit: fl = {np.round(fls, decimal_places)} pm {np.round(fl_errs, decimal_places)}, afb = {np.round(afbs, decimal_places)} pm {np.round(afb_errs, decimal_places)}")
     # plt.plot(vals, signal/norm_factor, label = 'Signal Fit', color = 'black')
     
-    plt.plot(vals, background/norm_factor, '-', color = 'grey')
-    plt.fill_between(vals, background/norm_factor, 0, color='c', alpha=0.2, label='Background')
+    plt.plot(vals, (n[5]/n_w[5])*background/norm_factor, '-', color = 'grey')
+    plt.fill_between(vals, (n[5]/n_w[5])*background/norm_factor, 0, color='c', alpha=0.2, label='Background')
     plt.plot(0, '.', label = f'SM vals: fl = {SM_FL[b]}, afb = {SM_AFB[b]}', color = 'grey') 
     plt.title(f'{files[0]} bin {b}')
     plt.legend()
     plt.xlabel(r'$\cos\theta_l$')
     plt.grid()
-    plt.ylabel('PDF')
-    plt.ylim(0,1.5)
+    ylabel = 'Candidate Count / %.1f' % ((b_w[1]-b_w[0]))
+    plt.ylabel(str(ylabel))
+    plt.xlim(-1, 1)
+    plt.ylim(bottom=0)
+    # plt.ylim(0,1.5)
     plt.show()
     
     # print(chi_sq(mcf.center_bins(e), h, fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b))
@@ -386,43 +397,3 @@ def afb_obs_plot(AFB, AFB_err): #!!
 AFB = np.array(afb_array)[:,0] #!!
 AFB_err = np.array(afb_array)[:,1] #!!
 afb_obs_plot(AFB, AFB_err)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
