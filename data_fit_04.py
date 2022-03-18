@@ -19,6 +19,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 import MODULE_curve_fitting_functions as mcf
 from iminuit import Minuit as minuit
+import MoM_bins as momb
+
 
 """
 Input the file names here.
@@ -28,6 +30,10 @@ mcf.read_data_into_bins() returns the dataframe AND the binned dataframe in q2 b
 files = ['total_dataset_binary3', 'acceptance_mc_binary3']
 DF, BINS, DF_MC, BINS_MC = mcf.read_data_into_bins(files[0], files[1], 0)
 variables = ['phi', 'costhetal', 'costhetak', 'q2']
+
+acc_filt_noq2 = pd.read_pickle('acceptance_mc_binary3_no_cuts.pkl')
+path = 'accept_arrays/c_ijmn_CF_6or.npy'
+c = np.load(path)
 
 
 """
@@ -68,28 +74,39 @@ THINGS TO CHANGE FOR DIFFERENT ANGULAR VARIABLES:
     
 """
 from MODULE_curve_fitting_functions import integrate2
+from numpy.polynomial import chebyshev as chb
+from numpy.polynomial import legendre as lg
 
 def chebyshev(x, a0, a1, a2):
-    return a0 + a1 * x + a2 * (2 * x ** 2 -1)
+    y = a0 + a1 * x + a2 * (2 * x ** 2 - 1)
+    # test_x = np.linspace(-1, 1, 20)
+    # test_y = a0 + a1 * test_x + a2 * (2 * test_x ** 2 - 1)
+    # print(test_y)
+    # if any(test_y<0) == True:
+    #     y = y*10
+    # if a0 - a1 + a2 * (2 -1) < 0:
+    #     y = y*0
+    return y
 
 def norm_chebyshev(x, a0, a1, a2): #!!
     y = chebyshev(x, a0, a1, a2)
-    x = np.linspace(-1,1,5000) #!!
-    norm_factor = integrate2(x, chebyshev(x, a0, a1, a2))
+    # x = np.linspace(-1,1,5000) #!!
+    # norm_factor = integrate2(x, chebyshev(x, a0, a1, a2))
+    norm_factor = chb.chebval(1, chb.chebint([a0, a1, a2], lbnd = -1, k=0))
     return y/norm_factor
 
 def pdf(fl, afb, _bin, cos_theta_l): #!!
     ctl = cos_theta_l 
     c2tl = 2 * ctl ** 2 - 1 
     scalar_array = 3/8 * (3/2 - 1/2 * fl + 1/2 * c2tl * (1 - 3 * fl) + 8/3 * afb * ctl)  
-    return scalar_array * mcf.polynomial(ctl, *X_PARAMS[_bin])
+    return scalar_array * lg.legval(ctl, X_PARAMS[_bin])
 
 def norm_pdf_without_bg(fl, afb, _bin, cos_theta_l): #!!
     cos_theta_l_acc = np.linspace(-1,1,5000) #!!
     norm_factor = integrate2(cos_theta_l_acc, pdf(fl=fl, afb=afb, _bin = _bin, cos_theta_l=cos_theta_l_acc))
     return pdf(fl, afb, _bin, cos_theta_l)/norm_factor
 
-def pdf_with_bg(fl, afb, a0, a1, a2, _bin, cos_theta_l): #!!!
+def pdf_with_bg(fl, afb, a0, a1, a2, _bin, cos_theta_l): #!!
     R = BG_RATIO[_bin]/(1-BG_RATIO[_bin]) # BG_RATIO is defined in the next cell
     norm_scalar_array = norm_pdf_without_bg(fl, afb, _bin, cos_theta_l) 
     return norm_scalar_array +  R*norm_chebyshev(cos_theta_l, a0, a1, a2)
@@ -104,14 +121,18 @@ def norm_pdf(fl, afb, a0, a1, a2, _bin, cos_theta_l): #!!
 
 def log_likelihood_ctl(fl, afb, a0, a1, a2, _bin): #!!
     # _BIN = BINS[int(_bin)] # 1st option: all data in q2 bins
-    _BIN = BINS[int(_bin)][(BINS[int(_bin)].B0_MM >= 5240)  & (BINS[int(_bin)].B0_MM <=5355)] # 2nd option: B0_MM cuts in q2 bins
+    _BIN = BINS[int(_bin)][(BINS[int(_bin)].B0_MM >= 5200)  & (BINS[int(_bin)].B0_MM <=5355)] # 2nd option: B0_MM cuts in q2 bins
     ctl = _BIN['costhetal']
     normalised_scalar_array = norm_pdf(fl=fl, afb=afb, a0=a0, a1=a1, a2=a2, _bin = int(_bin), cos_theta_l= ctl)
     dummy_x = np.linspace(-1,1,1000)
-    check = pdf(fl, afb, int(_bin), dummy_x)
+    check_signal = pdf(fl, afb, int(_bin), dummy_x)
     physicalness = 1
-    if np.sum([check < 0]):
-        physicalness = 1 + np.sum([check < 0])/10
+    if np.sum([check_signal < 0]):
+        physicalness += np.sum([check_signal < 0])/10
+    
+    check_background = chebyshev(dummy_x, a0, a1, a2)
+    if np.sum([check_background < 0]):
+        physicalness += np.sum([check_background])/10
     
     return - np.sum(np.log(normalised_scalar_array)) * physicalness
 
@@ -128,6 +149,7 @@ def chi_sq(x, data, fls, afbs, a0, a1, a2, b):
     for i in range(len(data)):
         X += ((N*norm_pdf(fls, afbs, a0, a1, a2, b, cos_theta_l = x[i])*dx - data[i]) ** 2) / data[i]
     return X/(len(data) + 5)
+
 #%%
 """
 Obtaining the chebyshev polynomials for each q2 bin
@@ -144,36 +166,70 @@ exp_guess = [[100, 200, 100, 100, 200, 150, 100, 150, 300, 150],
 for i in range(B):
     ### Extract acceptance params
     ### Use plt.hist() to show plots. Requires one more output argument: n, e, _= plt.hist()
-    n, e = np.histogram(BINS_MC[i][v], bins = NO_OF_BINS) # plt.hist(BINS_MC[i][v], bins = NO_OF_BINS)
-    _x, _y, x_params, x_cov = mcf.accept_fit(n, e)
-    X_PARAMS.append(x_params)
-    X_COV.append(x_cov)
+    # n, e = np.histogram(BINS_MC[i][v], bins = NO_OF_BINS) # plt.hist(BINS_MC[i][v], bins = NO_OF_BINS)
+    # _x, _y, x_params, x_cov = mcf.accept_fit(n, e)
+    # X_PARAMS.append(x_params)
+    # X_COV.append(x_cov)
     # plt.plot(_x, _y)
     # plt.show()
+    X_PARAMS.append(momb.acceptance_ctl_bin(acc_filt_noq2, c, i))
 
 #%%
 for i in range(B):
-    ### Extract chebyshev params
-    n, e, _ = plt.hist(BINS[i].B0_MM, bins = 25)
-    ec = mcf.center_bins(e)
-    ge_params, ge_cov = curve_fit(mcf.gaussian_exponent_fit, ec[3:], n[3:], 
-                                  p0 = [200, 5280, 180, exp_guess[0][i], exp_guess[1][i]])
-    plt.plot(np.arange(5100, 5700), mcf.gaussian_exponent_fit(np.arange(5100, 5700), *ge_params))
+    ## Extract chebyshev params
+    # n, e, _ = plt.hist(BINS[i][BINS[i].B0_MM.between(5170, 5700)].B0_MM, bins = 50, range=[5170, 5700], alpha=0.3)
+    # ec = mcf.center_bins(e)
+    # ge_params, ge_cov = curve_fit(mcf.gaussian_exponent_fit, ec, n, 
+    #                               p0 = [200, 5280, 180, exp_guess[0][i], exp_guess[1][i]], maxfev = 30000)
+    
+    n_p, b_p, _ = plt.hist(BINS[i][BINS[i].B0_MM.between(5170, 5700)].B0_MM, bins = 50, range=[5170, 5700], alpha = 0.3)
+    b_c = (b_p[1:] + b_p[:-1]) / 2
+    n_p_err = np.sqrt(n_p)
+    plt.errorbar(b_c, n_p, yerr=n_p_err, xerr = (b_c[1]-b_c[0])/2, color='k', fmt='o',
+                 markersize=3)
+    
+    ge_params, ge_cov = curve_fit(mcf.gaussian_exponent_fit, b_c, n_p, 
+                                  p0 = [200, 5280, 180, exp_guess[0][i], exp_guess[1][i]], maxfev = 30000)
+    plt.plot(np.arange(5170, 5700), mcf.gaussian_exponent_fit(np.arange(5170, 5700), *ge_params))
+    
+    
+    
+    plt.xlim((5170, 5700))
+    plt.xlabel(r'$m(K\pi\mu\mu)$')
+    ylabel = 'Candidate Count / %.1f MeV' % (b_c[1]-b_c[0])
+    plt.ylabel(ylabel)
+    plt.grid()
+    plt.clf()
     plt.show()
+   
     SIGNAL = 0
     BG = 0
-    for j in [i for i in ec if i>5200 and i <5355]:
-        SIGNAL += mcf.Gauss(j, *ge_params[:3])
-        BG += mcf.exp_decay(j, *ge_params[3:])
+    
+    sig_int = mcf.Gauss_int(5200, 5360, *ge_params[:3])
+    # print(mcf.Gauss_int(5240, 5320, *ge_params[:3])/mcf.Gauss_int(5200, 5355, *ge_params[:3]))
+    bg_int = mcf.exp_int(5200, 5360, *ge_params[3:])
+    
+    SIGNAL += sig_int
+    BG += bg_int
     BG_RATIO.append(BG/(SIGNAL + BG))
-    print(BG/(SIGNAL + BG))    
+    print(BG/(SIGNAL + BG))
     
     BINS_Q2_HM = BINS[i][(BINS[i]['B0_MM'] >= 5355) & (BINS[i]['B0_MM'] <= 5700)]
-    n_hm, e_hm, _ = plt.hist(BINS_Q2_HM[v], bins = 10) 
+    n_hm, e_hm, _ = plt.hist(BINS_Q2_HM[v], bins = 15, range = [-1,1])
     ec_hm = mcf.center_bins(e_hm)
+    
+    zeros_list = []
+    for j in range(len(n_hm)):
+        if n_hm[j] == 0:
+            zeros_list.append(j)
+    if len(zeros_list) > 0:
+        n_hm = np.delete(n_hm, zeros_list)
+        ec_hm = np.delete(ec_hm, zeros_list)
+        
     ec_width_hm = ec_hm[1] - ec_hm[0]
     cheby_params, cheby_cov = curve_fit(chebyshev, ec_hm, n_hm)
     plt.plot(np.linspace(-1,1,20), chebyshev(np.linspace(-1,1,20), *cheby_params))
+    plt.title(f'Bin {i}')
     plt.show()
     
     CHEBY_PARAMS.append(cheby_params)
@@ -202,7 +258,7 @@ for b in range(10):
     dont seems to have found good limits which allows the fit to converge. 
     """
     m.limits=((-1.0, 1.0), (-1.0, 1.0), #!!
-              (ST[2], ST[2]), (ST[3], ST[3]), (ST[4], ST[4]), None) 
+              (ST[2]-SD[2], ST[2]+SD[2]), (ST[3], ST[3]), (ST[4], ST[4]), None) 
     m.migrad()
     m.hesse()
     bin_results_to_check = m
@@ -219,26 +275,60 @@ for b in range(10):
     print(f"Bin {b}: Fl = {np.round(fls, decimal_places)} pm {np.round(fl_errs, decimal_places)},", 
           f" Afb = {np.round(afbs, decimal_places)} pm {np.round(afb_errs, decimal_places)}. Function minimum considered valid: {m.fmin.is_valid}")
     
+    # X = BINS[b][v].sort_values()
+    # signal = norm_pdf_without_bg(fls[0], afbs[0], b, X)                                                                        
+    # background = BG_RATIO[b]/(1-BG_RATIO[b]) * norm_chebyshev(X, a0s[0], a1s[0], a2s[0])
+    # norm_factor = norm_factor_signal_bg(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b)
+    # h, e, _ = plt.hist(X, bins = NO_OF_BINS, density = True, histtype = 'step', color = 'tab:blue', range = [-1,1])
+    # plt.errorbar(mcf.center_bins(e), h, yerr = np.sqrt(h * len(X))/len(X), fmt = '.', color = 'tab:blue')
+    # plt.plot(X, norm_pdf(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b, BINS[b][v].sort_values()),
+    #          label = f"Total Fit: fl = {np.round(fls, decimal_places)} pm {np.round(fl_errs, decimal_places)}, afb = {np.round(afbs, decimal_places)} pm {np.round(afb_errs, decimal_places)}")
+    # plt.plot(X, signal/norm_factor, label = 'Signal Fit', color = 'black')
+    # plt.plot(X, background/norm_factor, ':', label = "Background fit", color = 'red')
+    # plt.plot(0, '.', label = f'SM vals: fl = {SM_FL[b]}, afb = {SM_AFB[b]}', color = 'grey') 
+    # plt.title(f'{files[0]} bin {b}')
+    # plt.legend()
+    # plt.xlabel(v)
+    # plt.ylabel('PDF')
+    # plt.ylim(0,1.5)
+    # plt.show()
+    
     X = BINS[b][v].sort_values()
-    signal = norm_pdf_without_bg(fls[0], afbs[0], b, X)                                                                        
-    background = BG_RATIO[b]/(1-BG_RATIO[b]) * norm_chebyshev(X, a0s[0], a1s[0], a2s[0])
+    vals = np.linspace(-1, 1, 100)
+    signal = norm_pdf_without_bg(fls[0], afbs[0], b, vals)                                                                        
+    background = BG_RATIO[b]/(1-BG_RATIO[b]) * norm_chebyshev(vals, a0s[0], a1s[0], a2s[0])
     norm_factor = norm_factor_signal_bg(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b)
-    h, e, _ = plt.hist(X, bins = NO_OF_BINS, density = True, histtype = 'step', color = 'tab:blue', range = [-1,1])
-    plt.errorbar(mcf.center_bins(e), h, yerr = np.sqrt(h * len(X))/len(X), fmt = '.', color = 'tab:blue')
-    plt.plot(X, norm_pdf(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b, BINS[b][v].sort_values()),
+    
+    # h, e, _ = plt.hist(X, bins = NO_OF_BINS, range=[-1, 1], density = True, histtype = 'step', color = 'tab:blue')
+    
+    n, b_n = np.histogram(X, bins = NO_OF_BINS, range= [-1, 1])
+    n_w, b_w = np.histogram(X, bins = NO_OF_BINS, range= [-1, 1], density=True)
+    
+    b_c = (b_w[1:] + b_w[:-1]) / 2
+    n_w_err = np.sqrt(n)*(n_w[5]/n[5])
+    n_err = np.sqrt(n)
+    plt.errorbar(b_c, n, yerr = n_err, xerr = (b_w[1]-b_w[0])/2, fmt = 'o', color = 'k', markersize=4)
+    
+    
+    # plt.errorbar(mcf.center_bins(e), h, yerr = np.sqrt(h * len(X))/len(X), fmt = '.', color = 'tab:blue')
+    plt.plot(vals, (n[5]/n_w[5])*norm_pdf(fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b, vals), 'r--',
              label = f"Total Fit: fl = {np.round(fls, decimal_places)} pm {np.round(fl_errs, decimal_places)}, afb = {np.round(afbs, decimal_places)} pm {np.round(afb_errs, decimal_places)}")
-    plt.plot(X, signal/norm_factor, label = 'Signal Fit', color = 'black')
-    plt.plot(X, background/norm_factor, ':', label = "Background fit", color = 'red')
+    # plt.plot(vals, signal/norm_factor, label = 'Signal Fit', color = 'black')
+    
+    plt.plot(vals, (n[5]/n_w[5])*background/norm_factor, '-', color = 'grey')
+    plt.fill_between(vals, (n[5]/n_w[5])*background/norm_factor, 0, color='c', alpha=0.2, label='Background')
     plt.plot(0, '.', label = f'SM vals: fl = {SM_FL[b]}, afb = {SM_AFB[b]}', color = 'grey') 
     plt.title(f'{files[0]} bin {b}')
     plt.legend()
-    plt.xlabel(v)
-    plt.ylabel('PDF')
-    plt.ylim(0,1.5)
+    plt.xlabel(r'$\cos\theta_l$')
+    plt.grid()
+    ylabel = 'Candidate Count / %.1f' % ((b_w[1]-b_w[0]))
+    plt.ylabel(str(ylabel))
+    plt.xlim(-1, 1)
+    plt.ylim(bottom=0)
+    # plt.ylim(0,1.5)
     plt.show()
     
-    # print(chi_sq(mcf.center_bins(e), h, fls[0], afbs[0], a0s[0], a1s[0], a2s[0], b))
-
     fl_array.append([fls[0], fl_errs[0]])
     afb_array.append([afbs[0], afb_errs[0]])
 
