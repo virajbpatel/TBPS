@@ -36,8 +36,8 @@ Input the file names here.
 mcf.read_data_into_bins() returns the dataframe AND the binned dataframe in q2 bins for the data and acceptance files.
     argument: file_type = 0 or 1 for pkl or csv file 
 """
-files = ['datasets/total_dataset_binary3', 'datasets/acceptance_mc_binary3', 'datasets/part_filt']
-DF, BINS, DF_MC, BINS_MC = mcf.read_data_into_bins(files[0], files[1], files[2], 0)
+files = ['datasets/total_dataset_binary3', 'datasets/acceptance_mc_binary3']
+DF, BINS, DF_MC, BINS_MC = mcf.read_data_into_bins(files[0], files[1], 0)
 variables = ['phi', 'costhetal', 'costhetak', 'q2']
 
 #%%
