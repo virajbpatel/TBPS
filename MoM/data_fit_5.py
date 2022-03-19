@@ -316,6 +316,8 @@ for b in range(10):
     fl_array.append([fls[0], fl_errs[0]])
     afb_array.append([afbs[0], afb_errs[0]])
 #%%
+# Can save different runs to compare them. Uses time to make sure file names are different and not overwritten
+# Skip this cell if no need to save fit results
 from time import gmtime, strftime
 actual_time = strftime("%Y-%m-%d %H-%M-%S", gmtime())
 fl_save = 'values/fl_' + str(actual_time) + '.npy'
@@ -405,16 +407,11 @@ AFB_err = np.array(afb_array)[:,1] #!!
 FL = np.array(fl_array)[:,0] #!!
 FL_err = np.array(fl_array)[:,1] #!!
 
-
-# FL = np.load('values/fl_2022-03-16 19-54-52.npy')[:,0]
-# FL_err = np.load('values/fl_2022-03-16 19-54-52.npy')[:,1]
-# AFB = np.load('values/afb_2022-03-16 19-54-52.npy')[:,0]
-# AFB_err = np.load('values/afb_2022-03-16 19-54-52.npy')[:,1]
-
 fl_obs_plot(FL, FL_err)
 afb_obs_plot(AFB, AFB_err)
 
 #%%
+# Functions below tust plots different fit results on the same plot, for comparison
 def fl_obs_plot_loop(files): #!!
     q2_bins = [[0.1, 0.98], [1.1, 2.5], [2.5, 4.0], [4.0, 6.0], [6.0, 8.0], [15.0, 17.0],
            [17.0, 19.0], [11.0, 12.5], [1.0, 6.0], [15.0, 17.9]]
@@ -500,10 +497,6 @@ def afb_obs_plot_loop(files): #!!
     plt.legend()
     plt.show()
 
-
-fl_obs_plot_loop(['values/fl_2022-03-16 19-54-52.npy', 'values/fl_2022-03-16 20-11-48.npy'])
-
-afb_obs_plot_loop(['values/afb_2022-03-16 19-54-52.npy', 'values/afb_2022-03-16 20-11-48.npy'])
 
 
 
