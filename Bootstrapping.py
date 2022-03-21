@@ -41,10 +41,13 @@ from iminuit import Minuit as minuit
 #%%
 original_dataset = pd.read_pickle('total_dataset_binary3.pkl')
 original_dataset.reset_index(drop=True, inplace=True)
-sample_proportion = 0.98
+sample_proportion = 1
 repetitions = 20
 
 #%%
+"""
+this creates a subset of the original dataset without repetitions
+"""
 for i in range(1,repetitions+1):
     indices = random.sample(range(0, len(original_dataset)), int(np.round(len(original_dataset))*sample_proportion))
     columns = list(np.arange(0, 82, 1))
@@ -53,6 +56,42 @@ for i in range(1,repetitions+1):
     reduced_dataset.reset_index(drop=True, inplace=True)
     
     reduced_dataset.to_pickle("total_dataset_binary3_{}%_retained_trial_{}.pkl".format(int(sample_proportion*100),i))
+#%%
+"""
+this will create a new dataset that has the same number of points as the
+original but will not avoid repetitions
+"""
+for i in range(1,repetitions+1):
+    indices = []
+    for i in range(0,int(np.round(len(original_dataset))*sample_proportion)):
+        indices.append(random.randint(0,len(original_dataset)-1))
+    columns = list(np.arange(0, 82, 1))
+    
+    reduced_dataset = original_dataset.iloc[indices,columns]
+    reduced_dataset.reset_index(drop=True, inplace=True)
+    
+    reduced_dataset.to_pickle("total_dataset_binary3_{}%_retained_trial_{}.pkl".format(int(sample_proportion*100),i))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #%%
 """
