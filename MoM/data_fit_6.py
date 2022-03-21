@@ -1,7 +1,7 @@
+
 # -*- coding: utf-8 -*-
 """
 Created on Wed Mar  9 20:08:03 2022
-
 @author: kevin, the legend
 READ ME
 4th version of the data-fitting code
@@ -60,7 +60,6 @@ choose v as as the variable we are fitting over.
 1 = costhetal
 2 = costhetak
 3 = q2
-
 also define various SM predictions for the free parameters. Will be good as initial guesses and for final checks
 """
 v= variables[1] #!!
@@ -161,7 +160,7 @@ Obtaining the chebyshev polynomials for each q2 bin
 Obtaining acceptance coefficients for each q2 bin
 """
 X_PARAMS, X_COV = [], [] # acceptance
-CHEBY_PARAMS, CHEBY_COV, BG_RATIO, R_VALS = [], [], [], [] #chebyshev 
+CHEBY_PARAMS, CHEBY_COV, BG_RATIO, R_VALS, R_VALS_ERR = [], [], [], [], [] #chebyshev 
 
 ### initial guesses for the exponent parameter B and lamda. The fitting is sensitive so must be fine-tuned
 ### below is tuned for binary3 dataset
@@ -206,20 +205,15 @@ for i in range(B):
     plt.grid()
     plt.show()
     
-    SIGNAL = 0
-    BG = 0
+
+    num = 10000
+    RATIO, RATIO_Err = mcf.R_and_Err(5240, 5320, num, ge_params, ge_cov)
+    F, F_Err = mcf.Error_on_Fraction(RATIO, RATIO_Err)
     
-    sig_int = mcf.Gauss_int(5240, 5320, *ge_params[:3])
-    bg_int = mcf.exp_int(5240, 5320, *ge_params[3:])
-    
-    # print(mcf.Gauss_int(5240, 5320, *ge_params[:3])/mcf.Gauss_int(5200, 5355, *ge_params[:3]))
-    
-    SIGNAL += sig_int
-    BG += bg_int
-    RATIO = BG/(SIGNAL + BG)
     BG_RATIO.append(RATIO)
-    R_VALS.append(RATIO/(1-RATIO))
-    print(BG/(SIGNAL + BG))
+    R_VALS.append(F)
+    R_VALS_ERR.append(F_Err)
+
 
     
     BINS_Q2_HM = BINS[i][(BINS[i]['B0_MM'] >= 5355) & (BINS[i]['B0_MM'] <= 5700)]
@@ -241,7 +235,7 @@ for b in range(10):
     log_likelihood_ctl.errordef = minuit.LIKELIHOOD
     decimal_places = 3
     ST = [SM_FL[b],SM_AFB[b], CHEBY_PARAMS[b][0], CHEBY_PARAMS[b][1], CHEBY_PARAMS[b][2], R_VALS[b]] #!!
-    SD = [0.0, 0.0, np.sqrt(CHEBY_COV[b][0][0]), np.sqrt(CHEBY_COV[b][1][1]), np.sqrt(CHEBY_COV[b][2][2]), 0.1*R_VALS[b]] 
+    SD = [0.0, 0.0, np.sqrt(CHEBY_COV[b][0][0]), np.sqrt(CHEBY_COV[b][1][1]), np.sqrt(CHEBY_COV[b][2][2]), R_VALS_ERR[b]] 
     fls, fl_errs = [], [] #!!
     afbs, afb_errs = [], [] #!!
     Rs, Rs_errs = [], []
@@ -507,11 +501,6 @@ def afb_obs_plot_loop(files): #!!
 fl_obs_plot_loop(['values/fl_2022-03-16 19-54-52.npy', 'values/fl_2022-03-16 20-11-48.npy'])
 
 afb_obs_plot_loop(['values/afb_2022-03-16 19-54-52.npy', 'values/afb_2022-03-16 20-11-48.npy'])
-
-
-
-
-
 
 
 
