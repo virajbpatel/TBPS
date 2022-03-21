@@ -140,7 +140,7 @@ def integrate2(x,y):
     da_list = []
     for i in range(len(x)-1):
         dx = x[i+1] - x[i]
-        avg_y = (y[i+1] + y[i])/2
+        avg_y = (y[i+1] + y[i])/2 # error 
         da = avg_y*dx
         if da < 0:
             da = 0
@@ -223,6 +223,117 @@ def read_data_into_bins2(filtered_data, acceptance_data, unfiltered_data, file_t
     else: 
         raise Exception('Wrong file type')
     return df, bins, df_mc, bins_mc, df_uf, bins_uf
+
+
+def Err_on_si(ai, A, mu, sigma, B, lamda, sigA, sigmu, sigsig):
+    dFdA = Gauss(ai, 1, mu, sigma)
+    dFdmu = ((ai - mu)/sigma) * Gauss(ai, A, mu, sigma)
+    dFdsig = - ((ai - mu)**2/sigma)* np.log(sigma) * Gauss(ai, A, mu, sigma)
+    
+    E = np.sqrt((dFdA * sigA)**2 + (dFdmu * sigmu)**2 + (dFdsig * sigsig)**2)
+    
+    return E
+
+def Err_on_bi(ai, A, mu, sigma, B, lamda, sigB, siglam):
+    dFdB = exp_decay(ai, 1, lamda)
+
+    dFdlam = - lamda * exp_decay(ai, B, lamda)
+    
+    E = np.sqrt((dFdB * sigB)**2 + (dFdlam * siglam)**2)
+    
+    return E
+
+def Err_on_s(num, a, b, A, mu, sigma, B, lamda, sigA, sigmu, sigsig, sigB, siglam):
+    delta = (b - a)/num
+    E = 0
+    for ai in np.linspace(a, b, num):
+        sigwi = delta * Err_on_si(ai, A, mu, sigma, B, lamda, sigA, sigmu, sigsig)
+        E += sigwi**2
+        
+    return np.sqrt(E)
+
+def Err_on_b(num, a, b, A, mu, sigma, B, lamda, sigA, sigmu, sigsig, sigB, siglam):
+    delta = (b - a)/num
+    E = 0
+    for ai in np.linspace(a, b, num):
+        sigwi = delta * Err_on_bi(ai, A, mu, sigma, B, lamda, sigB, siglam)
+        E += sigwi**2
+        
+    return np.sqrt(E)
+
+def Err_on_R(sig_int, bg_int, Es, Eb):
+    dRdb = sig_int / (sig_int + bg_int)**2
+    dRds = - bg_int / (sig_int + bg_int)**2
+    E = (dRdb * Eb)**2 + (dRds * Es)**2
+    
+    return E
+
+def Err_on_si(ai, A, mu, sigma, B, lamda, sigA, sigmu, sigsig):
+    dFdA = Gauss(ai, 1, mu, sigma)
+    dFdmu = ((ai - mu)/sigma) * Gauss(ai, A, mu, sigma)
+    dFdsig = - ((ai - mu)**2/sigma)* np.log(sigma) * Gauss(ai, A, mu, sigma)
+    
+    E = np.sqrt((dFdA * sigA)**2 + (dFdmu * sigmu)**2 + (dFdsig * sigsig)**2)
+    
+    return E
+
+def Err_on_bi(ai, A, mu, sigma, B, lamda, sigB, siglam):
+    dFdB = exp_decay(ai, 1, lamda)
+
+    dFdlam = - lamda * exp_decay(ai, B, lamda)
+    
+    E = np.sqrt((dFdB * sigB)**2 + (dFdlam * siglam)**2)
+    
+    return E
+
+def Err_on_s(num, a, b, A, mu, sigma, B, lamda, sigA, sigmu, sigsig, sigB, siglam):
+    delta = (b - a)/num
+    E = 0
+    for ai in np.linspace(a, b, num):
+        sigwi = delta * Err_on_si(ai, A, mu, sigma, B, lamda, sigA, sigmu, sigsig)
+        E += sigwi**2
+        
+    return np.sqrt(E)
+
+def Err_on_b(num, a, b, A, mu, sigma, B, lamda, sigA, sigmu, sigsig, sigB, siglam):
+    delta = (b - a)/num
+    E = 0
+    for ai in np.linspace(a, b, num):
+        sigwi = delta * Err_on_bi(ai, A, mu, sigma, B, lamda, sigB, siglam)
+        E += sigwi**2
+        
+    return np.sqrt(E)
+
+def Err_on_R(sig_int, bg_int, Es, Eb):
+    dRdb = sig_int / (sig_int + bg_int)**2
+    dRds = - bg_int / (sig_int + bg_int)**2
+    E = (dRdb * Eb)**2 + (dRds * Es)**2
+    
+    return E
+
+def R_and_Err(st, ed, num, ge_params, ge_cov):
+    '''Return R and error on R'''
+    ge_params = abs(ge_params)
+    A, mu, sigma, B, lamda = ge_params
+    sigA, sigmu, sigsig, sigB, siglam = np.sqrt(ge_cov[0][0]), np.sqrt(ge_cov[1][1]), np.sqrt(ge_cov[2][2]), np.sqrt(ge_cov[3][3]), np.sqrt(ge_cov[4][4])
+
+
+    sig_int = Gauss_int(st, ed, *ge_params[:3])
+    bg_int = exp_int(st, ed, *ge_params[3:])
+    R = bg_int/(sig_int + bg_int)
+
+    Es = Err_on_s(num, st, ed, A, mu, sigma, B, lamda, sigA, sigmu, sigsig, sigB, siglam)
+    Eb = Err_on_b(num, st, ed, A, mu, sigma, B, lamda, sigA, sigmu, sigsig, sigB, siglam)
+
+    Err = Err_on_R(sig_int, bg_int, Es, Eb)
+    return R, Err
+
+def Error_on_Fraction(R, Err):
+    '''calculate F = R/(1-R) and error on it'''
+    F =  R/(1-R)
+    dFdR = 1/(1-R)**2
+    E = dFdR * Err
+    return F, E
 
 """
 Some example code below used below. It is currently commented out, and should be commented out 
