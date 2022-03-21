@@ -103,7 +103,8 @@ def norm_chebyshev(x, a0, a1, a2): #!!
 def pdf(fl, afb, _bin, cos_theta_l): #!!
     ctl = cos_theta_l 
     c2tl = 2 * ctl ** 2 - 1 
-    scalar_array = 3/8 * (3/2 - 1/2 * fl + 1/2 * c2tl * (1 - 3 * fl) + 8/3 * afb * ctl)  
+    scalar_array = 3/8 * (3/2 - 1/2 * fl + 1/2 * c2tl * (1 - 3 * fl) + 8/3 * afb * ctl) 
+    scalar_array[scalar_array<0] = 0
     return scalar_array * lg.legval(ctl, X_PARAMS[_bin])
 
 def norm_pdf_without_bg(fl, afb, _bin, cos_theta_l): #!!
@@ -130,16 +131,16 @@ def log_likelihood_ctl(fl, afb, a0, a1, a2, _bin): #!!
     ctl = _BIN['costhetal']
     normalised_scalar_array = norm_pdf(fl=fl, afb=afb, a0=a0, a1=a1, a2=a2, _bin = int(_bin), cos_theta_l= ctl)
     dummy_x = np.linspace(-1,1,500)
-    check_signal = pdf(fl, afb, int(_bin), dummy_x)
     
     physicalness = 1 # physicalness raises the -log_likelihood if the signal or background has negative probability
-    if np.sum([check_signal < 0]):
-        physicalness += np.sum([check_signal < 0])/500
+    # check_signal = pdf(fl, afb, int(_bin), dummy_x)
+    # if np.sum([check_signal < 0]):
+    #     physicalness += (np.sum([check_signal < 0])/500)
     
     check_background = chebyshev(dummy_x, a0, a1, a2)
     if np.sum([check_background < 0]):
-        physicalness += np.sum([check_background])/500
-    
+        physicalness += (np.sum([check_background])/500)**2
+
     return - np.sum(np.log(normalised_scalar_array)) * physicalness
 
 def norm_factor_signal_bg(fl, afb, a0, a1, a2, _bin): #!!
@@ -260,7 +261,7 @@ for b in range(10):
     dont seems to have found good limits which allows the fit to converge. 
     """
     m.limits=((-1.0, 1.0), (-1.0, 1.0), #!!
-              (ST[2]-SD[2], ST[2]+SD[2]), (ST[3]-SD[3], ST[3]+SD[3]), (ST[4]-SD[3], ST[4]+SD[3]), None) 
+              (ST[2]-0*SD[2], ST[2]+SD[2]), (ST[3]-SD[3], ST[3]+SD[3]), (ST[4]-SD[3], ST[4]+SD[3]), None) 
     m.migrad()
     m.hesse()
     bin_results_to_check = m
