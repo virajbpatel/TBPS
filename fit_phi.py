@@ -31,13 +31,13 @@ Input the file names here.
 mcf.read_data_into_bins() returns the dataframe AND the binned dataframe in q2 bins for the data and acceptance files.
     argument: file_type = 0 or 1 for pkl or csv file 
 """
-files = ['0321_forest_total80', '0321_forest_acc80', '0321_forest_accnoq280']
+files = ['total_dataset_binary3.pkl', 'acceptance_mc_binary3.pkl', 'acceptance_mc_binary3_no_cuts.pkl']
 DF, BINS, DF_MC, BINS_MC, acc_filt_noq2, _ = mcf.read_data_into_bins2(files[0], files[1], files[2], 0)
 variables = ['phi', 'costhetal', 'costhetak', 'q2']
 
 # acc_filt_noq2 = pd.read_pickle('acceptance_mc_binary3_no_cuts.pkl')
-path = 'accept_arrays/c_ijmn_CF_6or.npy'
-c = np.load(path)
+#path = 'accept_arrays/c_ijmn_NN_4or.npy'
+#c = np.load(path)
 
 
 """
@@ -48,7 +48,7 @@ choose v as as the variable we are fitting over.
 3 = q2
 also define various SM predictions for the free parameters. Will be good as initial guesses and for final checks
 """
-v= variables[3] #!!
+v= variables[0] #!!
 B = 10 # = number of q2 bins to iterate over
 NO_OF_BINS = 20 # number of bins to 
 SM_FL = [0.296, 0.760, 0.796, 0.711, 0.607, 0.348, 0.328, 0.435, 0.748, 0.340] 
@@ -103,7 +103,7 @@ def norm_chebyshev(x, a0, a1, a2): #!!
 def pdf(s3, s9, _bin, phi): #!!
     scalar_array = 1/(2*np.pi) * (s3*np.cos(2*phi)+s9*np.sin(2*phi)+1)
     scalar_array[scalar_array<0] = 0
-    return scalar_array * lg.legval(phi, X_PARAMS[_bin])
+    return scalar_array * lg.legval(phi/np.pi, X_PARAMS[_bin])
 
 def norm_pdf_without_bg(s3, s9, _bin, phi): #!!
     phi_acc = np.linspace(-np.pi,np.pi,5000) #!!
@@ -168,12 +168,12 @@ CHEBY_PARAMS, CHEBY_COV, BG_RATIO = [], [], [] #chebyshev
 exp_guess = [[100, 200, 100, 100, 200, 150, 100, 150, 300, 150], 
              [0.00001, 0.0002, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001]]
 
-path = 'accept_arrays/c_ijmn_CF_6or.npy'
+path = 'accept_arrays/c_ijmn_NN_4or.npy'
 # momb.acceptance_c(acc_filt_noq2, [0.1, 19.0], path)
 c = np.load(path)
 
 for i in range(B):
-    X_PARAMS.append(momb.acceptance_phi_bin(acc_filt_noq2, c, i))
+    X_PARAMS.append(momb.acceptance_phi_bin(DF_MC, c, i))
 
 #%%
 for i in range(B):
