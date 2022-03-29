@@ -10,6 +10,21 @@ from sklearn.metrics import confusion_matrix, classification_report
 from tensorflow.keras import callbacks
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shap
+
+from Filter_plots import q2_cuts, IP_check, mom_check, muon_PT_check, invariant_mass_check, particle_ID_check, check_all
+
+CUTS = [q2_cuts, particle_ID_check]
+
+def perform_cuts(df):
+    for cut in CUTS:
+        df = cut(df)
+    return df
+
+'''
+q2_cuts and particle_ID_check
+no angular variables (costhetal, costhetak, phi)
+'''
 
 # Function to preprocess raw dataframe
 def prep_data(df):
@@ -27,6 +42,8 @@ def prep_data(df):
 def build_model(num_features):
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape = (num_features,)))
+    model.add(tf.keras.layers.Dense(32, activation = 'relu', kernel_regularizer = 'l2'))
+    model.add(tf.keras.layers.Dropout(0.3))
     model.add(tf.keras.layers.Dense(32, activation = 'relu', kernel_regularizer = 'l2'))
     model.add(tf.keras.layers.Dense(1, activation = 'sigmoid'))
     model.compile(
@@ -73,7 +90,9 @@ def plot_heatmap(class_names, y_pred, y_test):
 def main():
     # Import data file
     df = pd.read_pickle("all_samples_df.pkl")
-    df = df.drop(columns = ['year'])
+    #df = perform_cuts(df)
+    df = df.drop(columns = ['year','q2', 'polarity',"mu_plus_MC15TuneV1_ProbNNmu","mu_minus_MC15TuneV1_ProbNNmu",
+    "K_MC15TuneV1_ProbNNk","Pi_MC15TuneV1_ProbNNpi", 'phi', 'costhetal','costhetak'])
     # Reformat data for binary classification
     df.loc[df['class'] != 8, 'class'] = 0 # 0 for not a signal
     df.loc[df['class'] == 8, 'class'] = 1 # 1 for signal
@@ -114,9 +133,10 @@ def main():
     print(classification_report(y_test, y_pred, target_names = class_names))
     plot_heatmap(class_names, y_pred, y_test)
     plt.show()
-    model.save('/hep_models/kstar_nn_binary')
-    
-    
+    model.save('/hep_models/kstar_nn_binary_2')
+    explainer = shap.DeepExplainer(model,x_train[np.random.choice(x_train.shape[0], 1000, replace=False)])
+    shap_values = explainer.shap_values(x_test)
+    shap.summary_plot(shap_values[0], plot_type = 'bar', feature_names = cols[:-1])
 
 if __name__ == "__main__":
     main()
